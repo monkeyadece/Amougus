@@ -448,3 +448,77 @@ if ($TempItems.count -gt 1) {
 else {
     Cleanup
 }
+
+# List of directories to clean
+$tempDirs = @(
+    $env:TEMP,                                        # User Temp
+    $env:TMP,                                         # User Temp (alternative)
+    "C:\Windows\Temp",                                # System Temp
+    "C:\Windows\Prefetch",                            # Windows Prefetch
+    "C:\Windows\SoftwareDistribution\Download",       # Windows Update Cache
+    "C:\Windows\SoftwareDistribution\DeliveryOptimization", # Delivery Optimization Cache
+    "C:\ProgramData\Microsoft\Windows\WER",           # Windows Error Reporting
+    "C:\Windows\Logs",                                # System Logs
+    "$env:LocalAppData\Microsoft\Windows\INetCache",  # Internet Explorer Cache
+    "$env:LocalAppData\Microsoft\Edge\User Data\Default\Cache", # Edge Cache
+    "$env:LocalAppData\Google\Chrome\User Data\Default\Cache"  # Chrome Cache
+)
+
+# Function to delete files and directories
+function Delete-TempFiles {
+    param (
+        [string]$Path
+    )
+    Write-Host "Cleaning: $Path" -ForegroundColor Cyan
+
+    if (Test-Path -Path $Path) {
+        try {
+            # Delete all files
+            Get-ChildItem -Path $Path -File -Recurse -Force -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+
+            # Delete all directories
+            Get-ChildItem -Path $Path -Directory -Recurse -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+
+            Write-Host "Successfully cleaned: $Path" -ForegroundColor Green
+        } catch {
+            Write-Warning "Failed to clean: $Path. Error: $_"
+        }
+    } else {
+        Write-Warning "Path does not exist: $Path"
+    }
+}
+
+# Function to clean Recycle Bin (called only once)
+function Clear-RecycleBin-Safely {
+    Write-Host "Cleaning Recycle Bin..." -ForegroundColor Cyan
+    try {
+        Clear-RecycleBin -Force -ErrorAction SilentlyContinue
+        Write-Host "Recycle Bin cleaned successfully." -ForegroundColor Green
+    } catch {
+        Write-Warning "Failed to clean Recycle Bin. Error: $_"
+    }
+}
+
+# Function to flush DNS cache
+function Flush-DNSCache {
+    Write-Host "Flushing DNS cache..." -ForegroundColor Cyan
+    try {
+        ipconfig /flushdns
+        Write-Host "DNS cache flushed successfully." -ForegroundColor Green
+    } catch {
+        Write-Warning "Failed to flush DNS cache. Error: $_"
+    }
+}
+
+# Clean each temporary directory
+foreach ($dir in $tempDirs) {
+    Delete-TempFiles -Path $dir
+}
+
+# Perform actions outside of the loop
+Clear-RecycleBin-Safely
+Flush-DNSCache
+
+# Final message
+Write-Host "Finished cleaning! Your system is now tidy and optimized." -ForegroundColor Yellow
+
